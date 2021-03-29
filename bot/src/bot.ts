@@ -8,8 +8,17 @@ export class EchoBot extends ActivityHandler {
         super();
         // See https://aka.ms/about-bot-activity-message to learn more about the message and other activity types.
         this.onMessage(async (context, next) => {
-            const replyText = `Echo: ${ context.activity.text }`;
-            await context.sendActivity(MessageFactory.text(replyText, replyText));
+            if( context.activity.text.includes("title")) {
+                const newTitle = context.activity.text.replace("title", "");
+                const replyText = `Change Window Title to: ${ newTitle }`;
+                const activity = MessageFactory.text(replyText, replyText);
+                activity.channelData = {"event": "titlechange", "text": newTitle };
+                await context.sendActivity(activity);
+            } else {
+                const replyText = `Echo: ${ context.activity.text }`;
+                await context.sendActivity(MessageFactory.text(replyText, replyText));
+            }
+
             // By calling next() you ensure that the next BotHandler is run.
             await next();
         });
