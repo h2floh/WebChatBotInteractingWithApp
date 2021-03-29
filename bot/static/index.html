@@ -86,6 +86,7 @@
     <div id="webchat" role="main"></div>
     <script type="text/babel" data-presets="es2015,react,stage-3">
       (async function() {
+        var processedEvents = [];
         const { ReactWebChat } = window.WebChat;
         const { useCallback, useMemo } = window.React;
         const {
@@ -165,14 +166,25 @@
           return next({ notification, ...otherArgs });
         };
 
-        const sendMessageToHost = () => {
-            console.log('sendMessageToHost');
-            window.chrome.webview.postMessage('SetTitleText ButtonPressed');
+        function sendMessageToHost(title) {
+            console.log('sendTitleEvent ' + title);
+            try {
+              // WebView2 -- https://github.com/MicrosoftEdge/WebView2Samples/blob/master/SampleApps/WebView2APISample/README.md#8-scenariowebmessagecpp-and-scenariowebmessagehtml
+              window.chrome.webview.postMessage('SetTitleText ' + title);
+            } catch {}
+            try {
+              // WebView -- https://github.com/MicrosoftDocs/WindowsCommunityToolkitDocs/blob/master/docs/controls/wpf-winforms/WebView.md#interact-with-web-view-content
+              // https://docs.microsoft.com/en-us/uwp/api/windows.web.ui.interop.webviewcontrol.scriptnotify?view=winrt-19041
+              window.external.notify('SetTitleText ' + title);
+            } catch {}
+        };
+
+        const sendButtonPressedEvent = (sender) => {
+          sendMessageToHost('Button Pressed');
         };
 
         const sendTitleEvent = (title) => {
-            console.log('sendTitleEvent');
-            window.chrome.webview.postMessage('SetTitleText ' + title);
+          sendMessageToHost(title);
         };
         
         const BotActivityDecorator = ({ children }) => {
@@ -180,10 +192,7 @@
             <div>
               <ul>
                 <li>
-                  <button onClick={sendMessageToHost}>👍</button>
-                </li>
-                <li>
-                  <button>👎</button>
+                  <button onClick={sendButtonPressedEvent}>SetTitle ButtonPressed</button>
                 </li>
               </ul>
               <div>{children}</div>
@@ -193,19 +202,23 @@
         
         const activityMiddleware = () => next => (...setupArgs) => {
           const [card] = setupArgs
-        //   if (card.activity.from.role === 'bot') {
-        //     return (...renderArgs) => (
-        //       <BotActivityDecorator activityID={card.activity.id} key={card.activity.id}>
-        //         {next(card)(...renderArgs)}
-        //       </BotActivityDecorator>
-        //     );
-        //   } 
-          if (card.activity.channelData != null
+          if (card.activity.from.role === 'bot') {
+            // process Event
+            if (card.activity.channelData != null
                 && card.activity.channelData.event != null
-                && card.activity.channelData.event === 'titlechange') { 
-            sendTitleEvent(card.activity.channelData.text);
-            return next(card);
-          }
+                && card.activity.channelData.event === 'titlechange') {          
+                  if (processedEvents.indexOf(card.activity.id) === -1) {
+                    sendTitleEvent(card.activity.channelData.text);
+                    processedEvents.push(card.activity.id);
+                  }
+            }
+
+            return (...renderArgs) => (
+              <BotActivityDecorator activityID={card.activity.id} key={card.activity.id}>
+                {next(card)(...renderArgs)}
+              </BotActivityDecorator>
+            );
+          } 
           else {
             return next(card);
           }
