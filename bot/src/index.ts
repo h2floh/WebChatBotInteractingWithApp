@@ -11,13 +11,13 @@ import * as restify from 'restify';
 
 // Import required bot services.
 // See https://aka.ms/bot-services to learn more about the different parts of a bot.
-import { BotFrameworkAdapter } from 'botbuilder';
+import { BotFrameworkAdapter, ConversationState, MemoryStorage, UserState } from 'botbuilder';
 
-// This bot's main dialog.
+// Import Bot and QnA Dialog
 import { EchoBot } from './bot';
+import { QnADialog } from './dialogs/qnaDialog';
 // Import WebChat
 import { WebChat } from './webchat';
-
 
 // Create HTTP server.
 const server = restify.createServer();
@@ -57,10 +57,34 @@ const onTurnErrorHandler = async (context, error) => {
 // Set the onTurnError for the singleton BotFrameworkAdapter.
 adapter.onTurnError = onTurnErrorHandler;
 
-// Create the main dialog.
-const myBot = new EchoBot();
-// Create the webchat handler
-const webChat = new WebChat();
+// Create the bot
+
+// additional config
+var endpointHostName = process.env.QnAEndpointHostName;
+if (!endpointHostName.startsWith('https://')) {
+    endpointHostName = 'https://' + endpointHostName;
+}
+
+if (!endpointHostName.includes('/v5.0') && !endpointHostName.endsWith('/qnamaker')) {
+    endpointHostName = endpointHostName + '/qnamaker';
+}
+
+// To support backward compatibility for Key Names, fallback to process.env.QnAAuthKey.
+const endpointKey = process.env.QnAEndpointKey || process.env.QnAAuthKey;
+
+// State Management
+// CAUTION: The Memory Storage used here is for local bot debugging only. When the bot
+// is restarted, anything stored in memory will be gone.
+const memoryStorage = new MemoryStorage();
+const conversationState = new ConversationState(memoryStorage);
+const userState = new UserState(memoryStorage);
+
+// Create the QnA dialog.
+const dialog = new QnADialog(process.env.QnAKnowledgebaseId, endpointKey, endpointHostName, process.env.DefaultAnswer);
+
+// Create the bot's main handler.
+const myBot = new EchoBot(conversationState, userState, dialog);
+
 
 // Listen for incoming requests.
 server.post('/api/messages', (req, res) => {
@@ -69,6 +93,12 @@ server.post('/api/messages', (req, res) => {
         await myBot.run(context);
     });
 });
+
+
+// WebChat Hosting related routing/processing
+
+// Create the webchat handler
+const webChat = new WebChat();
 
 server.get('/js/*', restify.plugins.serveStatic({ directory: __dirname, appendRequestPath: false }));
 

@@ -1,4 +1,5 @@
 # custom for this project
+.vscode
 bot/lib
 deploy.zip
 .cheatsheet
