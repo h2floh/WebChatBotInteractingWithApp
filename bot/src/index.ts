@@ -14,10 +14,12 @@ import * as restify from 'restify';
 import { BotFrameworkAdapter, ConversationState, MemoryStorage, UserState } from 'botbuilder';
 
 // Import Bot and QnA Dialog
-import { EchoBot } from './bot';
+import { QnABot } from './bot';
 import { QnADialog } from './dialogs/qnaDialog';
 // Import WebChat
 import { WebChat } from './webchat';
+// Import TokenGenerator
+import { TokenGenerator } from './TokenGenerator';
 
 // Create HTTP server.
 const server = restify.createServer();
@@ -83,7 +85,7 @@ const userState = new UserState(memoryStorage);
 const dialog = new QnADialog(process.env.QnAKnowledgebaseId, endpointKey, endpointHostName, process.env.DefaultAnswer);
 
 // Create the bot's main handler.
-const myBot = new EchoBot(conversationState, userState, dialog);
+const myBot = new QnABot(conversationState, userState, dialog);
 
 
 // Listen for incoming requests.
@@ -94,6 +96,11 @@ server.post('/api/messages', (req, res) => {
     });
 });
 
+const tokenGen = new TokenGenerator();
+
+server.post('/directline/token', async (req, res) => {
+    await tokenGen.handle(res, process.env.WebChatSecret);
+})
 
 // WebChat Hosting related routing/processing
 

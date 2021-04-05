@@ -6,7 +6,7 @@ import { DialogState } from 'botbuilder-dialogs';
 import { StatePropertyAccessor } from 'botbuilder-core'
 import { QnADialog } from './dialogs/qnaDialog';
 
-export class EchoBot extends ActivityHandler {
+export class QnABot extends ActivityHandler {
     private dialog: QnADialog;
     private conversationState: ConversationState;
     private userState: UserState;
@@ -28,25 +28,7 @@ export class EchoBot extends ActivityHandler {
         // See https://aka.ms/about-bot-activity-message to learn more about the message and other activity types.
         this.onMessage(async (context, next) => {
 
-            if(context.activity.text.startsWith("Q")) {
-                // Run the Dialog with the new message Activity.
-                context.activity.text = context.activity.text.slice(1);
-                await this.dialog.run(context, this.dialogState);
-            }
-            if(context.activity.text.includes("title")) {
-                // If the message contains title, send a message including custom channelData for processing on FrontEnd
-                const newTitle = context.activity.text.replace("title", "");
-                const replyText = `Change Window Title to: ${ newTitle }`;
-                const activity = MessageFactory.text(replyText, replyText);
-                // Adding custom data to the activity message for parsing on front end
-                activity.channelData = {"event": "titlechange", "text": newTitle };
-                await context.sendActivity(activity);
-            } else {
-                // Standard Echo Bot example
-                const replyText = `Echo: ${ context.activity.text }`;
-                await context.sendActivity(MessageFactory.text(replyText, replyText));
-            }
-
+            await this.dialog.run(context, this.dialogState);
             // By calling next() you ensure that the next BotHandler is run.
             await next();
         });
@@ -70,15 +52,4 @@ export class EchoBot extends ActivityHandler {
             await next();
         });
     }
-
-    // /**
-    //  * Override the ActivityHandler.run() method to save state changes after the bot logic completes.
-    //  */
-    //      async run(context: TurnContext) {
-    //         await super.run(context);
-    
-    //         // Save any state changes. The load happened during the execution of the Dialog.
-    //         await this.conversationState.saveChanges(context, false);
-    //         await this.userState.saveChanges(context, false);
-    //     }
 }
