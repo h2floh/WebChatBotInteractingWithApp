@@ -12,11 +12,11 @@ export class TokenGenerator {
                 { method: 'POST', headers: { 'Authorization' : `Bearer ${webChatSecret}` } });
 
             const raw = await response.json() as JSON;
-            console.log(raw);
             var body =Buffer.from(JSON.stringify(raw), 'utf8');
             res.writeHead(200, {
                 'Content-Length': Buffer.byteLength(body),
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
                 });
                 res.write(body);
                 res.end();
